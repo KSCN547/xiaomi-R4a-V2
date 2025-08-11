@@ -92,7 +92,7 @@ jobs:
           make -j$(nproc) V=s
           
       - name: Upload firmware
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: OpenWrt-R3GV2-Firmware
           path: openwrt-r3gv2/bin/targets/ramips/mt7621/*-squashfs-sysupgrade.bin
