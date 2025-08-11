@@ -27,58 +27,21 @@ jobs:
 
       - name: Copy feeds.conf
         run: |
-          cp openwrt/feeds.conf.default openwrt-r3gv2/feeds.conf
+          cp feeds.conf.default openwrt-r3gv2/feeds.conf
 
       - name: Update and install feeds
         run: |
           cd openwrt-r3gv2
           ./scripts/feeds update -a
-          ./scripts/feeds install luci firewall ppp luci-theme-material luci-i18n-base-zh-cn luci-i18n-firewall-zh-cn
+          ./scripts/feeds install -a
 
-      - name: Create custom config
+      - name: Copy .config
         run: |
-          cd openwrt-r3gv2
-          cat > .config << EOF
-          CONFIG_TARGET_ramips=y
-          CONFIG_TARGET_ramips_mt7621=y
-          CONFIG_TARGET_ramips_mt7621_DEVICE_xiaomi_mir3g-v2=y
+          cp .config openwrt-r3gv2/.config
 
-          CONFIG_PACKAGE_luci=y
-          CONFIG_PACKAGE_luci-base=y
-          CONFIG_PACKAGE_luci-mod-admin-full=y
-          CONFIG_PACKAGE_luci-theme-material=y
-          CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
-          CONFIG_PACKAGE_luci-app-firewall=y
-          CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
-
-          CONFIG_PACKAGE_ppp=y
-          CONFIG_PACKAGE_pppoe=y
-          CONFIG_PACKAGE_luci-proto-ppp=y
-
-          CONFIG_PACKAGE_kmod-ipv6=y
-          CONFIG_PACKAGE_odhcpd-ipv6only=y
-          CONFIG_PACKAGE_luci-proto-ipv6=y
-
-          CONFIG_PACKAGE_uhttpd=y
-          CONFIG_PACKAGE_rpcd=y
-          CONFIG_PACKAGE_base-files=y
-          CONFIG_PACKAGE_network=y
-          EOF
-
-      - name: Apply custom patch for default IP
+      - name: Apply default IP patch
         run: |
-          cd openwrt-r3gv2
-          mkdir -p package/base-files/patches
-          cat > package/base-files/patches/999-custom-ip.patch << 'EOF'
-          --- a/package/base-files/files/bin/config_generate
-          +++ b/package/base-files/files/bin/config_generate
-          @@ -100,7 +100,7 @@
-           lan_ifname=$(uci_get network.lan.ifname)
-           lan_proto=$(uci_get network.lan.proto)
-           lan_ipaddr=$(uci_get network.lan.ipaddr)
-          -lan_ipaddr=${lan_ipaddr:-192.168.1.1}
-          +lan_ipaddr=${lan_ipaddr:-192.168.101.1}
-          EOF
+          cp -r patches openwrt-r3gv2/package/base-files/
 
       - name: Prepare build
         run: |
@@ -95,5 +58,5 @@ jobs:
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: OpenWrt-R3GV2-Firmware
+          name: OpenWrt-R4A-V2-Firmware
           path: openwrt-r3gv2/bin/targets/ramips/mt7621/*-squashfs-sysupgrade.bin
