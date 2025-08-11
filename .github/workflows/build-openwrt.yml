@@ -1,0 +1,98 @@
+name: Build OpenWrt
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up build environment
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libncurses5-dev gawk git gettext libssl-dev xz-utils zlib1g-dev python3 python3-pip
+          
+      - name: Clone OpenWrt source
+        run: |
+          git clone https://github.com/openwrt/openwrt.git openwrt-r3gv2
+          cd openwrt-r3gv2
+          git checkout v23.05.2 # 或者你希望的稳定版本
+          
+      - name: Copy feeds.conf
+        run: |
+          cp feeds.conf.default openwrt-r3gv2/feeds.conf
+          
+      - name: Update and install feeds
+        run: |
+          cd openwrt-r3gv2
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          
+      - name: Create custom config
+        run: |
+          cd openwrt-r3gv2
+          cat > .config << EOF
+          # Target system
+          CONFIG_TARGET_ramips=y
+          CONFIG_TARGET_ramips_mt7621=y
+          CONFIG_TARGET_ramips_mt7621_DEVICE_xiaomi_mir3g-v2=y
+          
+          # General configuration
+          CONFIG_IPV6=y
+          CONFIG_IPV6_NDP=y
+          CONFIG_IPV6_DHCPV6=y
+          
+          # Web interface and theme
+          CONFIG_PACKAGE_luci=y
+          CONFIG_PACKAGE_luci-app-firewall=y
+          CONFIG_PACKAGE_luci-theme-material=y
+          CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
+          CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
+          
+          # Network components
+          CONFIG_PACKAGE_pppoe-server=y
+          CONFIG_PACKAGE_pppoe-server-ipv6=y
+          CONFIG_PACKAGE_pppoe-client=y
+          CONFIG_PACKAGE_l2tp-server=y
+          
+          # Other utilities
+          CONFIG_PACKAGE_uhttpd=y
+          CONFIG_PACKAGE_odhcpd=y
+          CONFIG_PACKAGE_kmod-ipv6=y
+          
+          # The following will set the default IP address to 192.168.101.1
+          # Note: this is a common method, but for a more robust approach,
+          # you might need to use a custom patch or modify files directly.
+          CONFIG_PACKAGE_luci-base=y
+          CONFIG_PACKAGE_luci-base-network=y
+          CONFIG_PACKAGE_luci-base-firewall=y
+          
+          # Custom IP address settings
+          CONFIG_PACKAGE_network=y
+          CONFIG_PACKAGE_base-files=y
+          
+          EOF
+          
+      - name: Download necessary packages
+        run: |
+          cd openwrt-r3gv2
+          make defconfig
+          make download -j8
+          
+      - name: Compile the firmware
+        run: |
+          cd openwrt-r3gv2
+          make -j$(nproc) V=s
+          
+      - name: Upload firmware
+        uses: actions/upload-artifact@v3
+        with:
+          name: OpenWrt-R3GV2-Firmware
+          path: openwrt-r3gv2/bin/targets/ramips/mt7621/*-squashfs-sysupgrade.bin
